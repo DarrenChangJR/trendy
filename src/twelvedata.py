@@ -1,4 +1,4 @@
-from requests import Response
+from requests import Session
 from datetime import date
 
 class TwelveData:
@@ -6,7 +6,7 @@ class TwelveData:
 
     def __init__(self, apikey) -> None:
         self._apikey = apikey
-        self._session = requests.Session()
+        self._session = Session()
         self._session.headers.update({"Authorization": self._apikey})
 
     def _request(self, path: str, params: dict[str, str]) -> str:
