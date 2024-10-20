@@ -1,11 +1,10 @@
-
+from data_analysis import SymbolEvent
+from datetime import date
     
 
 def main() -> None:
-    # collect inputs
+    symbol_event = SymbolEvent("AAPL", [date.today()], 5, 5)
+    # print(symbol_event.tensor)
 
-    # call twelvedata
-    pass
-
-if __name__ == "main":
-    main()
+# if __name__ == "main":
+main()
