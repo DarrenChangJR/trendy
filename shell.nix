@@ -1,24 +1,25 @@
-# mkdir <project_name>
-# cp template_shell.nix <project_name>/shell.nix
-# cd <project_name>
-# nix-shell
-
-with import <nixpkgs> {};
-
-mkShell {
-  venvDir = "./.venv";
-  buildInputs = [
-    python3
-    python3.pkgs.venvShellHook
+let
+  # Pin to a specific nixpkgs commit for reproducibility.
+  pkgs = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/24bb1b20a9a57175965c0a9fb9533e00e370c88b.tar.gz") {config.allowUnfree = true; };
+in pkgs.mkShell {
+  nativeBuildInputs = [
+    pkgs.python311
+    pkgs.python311Packages.torch-bin
+    pkgs.python311Packages.torchaudio-bin
+    pkgs.python311Packages.torch-audiomentations
+    pkgs.python311Packages.librosa
+    pkgs.python311Packages.jiwer
+    pkgs.python311Packages.datasets
+    pkgs.python311Packages.transformers
+    pkgs.python311Packages.evaluate
+    pkgs.python311Packages.accelerate
+    pkgs.python311Packages.pip
+    
   ];
-  NIX_LD_LIBRARY_PATH = lib.makeLibraryPath [
-    # Add pkgs whose side-effects add any required .so files
-    stdenv.cc.cc
-    zlib
-  ];
-  NIX_LD = lib.fileContents "${stdenv.cc}/nix-support/dynamic-linker";
+
   shellHook = ''
-    export LD_LIBRARY_PATH=$NIX_LD_LIBRARY_PATH
-    venvShellHook
+    echo "You are now using a NIX environment"
+    export CUDA_PATH=${pkgs.cudatoolkit}
+    echo $CUDA_PATH
   '';
 }
