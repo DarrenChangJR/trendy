@@ -1,11 +1,8 @@
 from os import path
-from datetime import date, timedelta
+from datetime import date
 
-def get_filename(symbol: str, event_dates: list[date], pre_event: int, post_event: int) -> str:
-    start = min(event_dates) - timedelta(days=pre_event)
-    end = max(event_dates) + timedelta(days=post_event)
-    filename = f"{symbol} {start.strftime('%Y-%m-%d')} {end.strftime('%Y-%m-%d')}.csv"
-    return filename
-
-def get_dir(dir: str) -> str:
-    return path.join(path.dirname(path.dirname(__file__)), dir)
+def data_filepath(symbol: str, start: date, end: date, extension: str) -> tuple[str, bool]:
+    data_dir = path.join(path.dirname(path.dirname(__file__)), "data")
+    filename = f"{symbol} {start.strftime('%Y-%m-%d')} {end.strftime('%Y-%m-%d')}.{extension}"
+    filepath = path.join(data_dir, filename)
+    return filepath, path.exists(filepath)
