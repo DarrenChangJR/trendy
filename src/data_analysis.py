@@ -1,40 +1,55 @@
-from datetime import date
+from datetime import date, timedelta
 import torch
 import pandas as pd
+from logging import getLogger
 
-def raw_df(csv_filepath: str, event_dates: list[date]) -> tuple[pd.DataFrame, list[int]]:
-    df = pd.read_csv(csv_filepath, sep=";", usecols=["date", "close"], parse_dates=["date"], index_col="date")
-    df.sort_index(ascending=False, inplace=True)
-    event_indices = df.index.get_indexer_for(event_dates)
-    return df, event_indices
+logger = getLogger()
 
-def raw_tensor(df: pd.DataFrame) -> tuple[torch.Tensor, list[int]]:
-    raw_tensor = torch.tensor(df["close"].values).cuda()
+def raw_df(csv_filepath: str) -> pd.DataFrame:
+    logger.info(f"Reading {csv_filepath}")
+    df = pd.read_csv(
+        csv_filepath,
+        sep=";",
+        usecols=["date", "close"],
+        parse_dates=["date"],
+        index_col="date"
+    )
+    df.sort_index(inplace=True)
+    return df
+
+def raw_tensor(df: pd.DataFrame, event_dates: list[date], pre_event: int, post_event: int, max_offset: int) -> torch.Tensor:
+    raw_tensor = torch.empty(len(event_dates), pre_event + post_event + 2 * max_offset + 1)
+    for i, event_date in enumerate(event_dates):
+        event_timestamp = pd.Timestamp(event_date)
+        index = df.index.get_loc(event_timestamp)
+        logger.debug(f"Event date: {event_date}, indices: [{index - pre_event - max_offset} to {index + post_event + max_offset + 1})")
+        raw_tensor[i] = torch.tensor(df.iloc[index - pre_event - max_offset:index + post_event + max_offset + 1]["close"].values)
+    
+    if torch.cuda.is_available():
+        logger.info("CUDA is available, using GPU")
+        raw_tensor = raw_tensor.cuda()
+    else:
+        logger.info("CUDA is not available, using CPU")
     return raw_tensor
 
 def delta_tensor(raw_tensor: torch.Tensor) -> torch.Tensor:
-    return torch.div(raw_tensor.diff(), raw_tensor[1:])
+    return torch.div(raw_tensor.diff(), raw_tensor[:, :-1])
 
 def normalise_against(raw_tensor: torch.Tensor, benchmark_tensor: torch.Tensor) -> torch.Tensor:
     return torch.div(raw_tensor, benchmark_tensor)
 
-# receive tensor, event_date_index, pre, post, max_offset
-def mse_loss(tensor: torch.Tensor, start1: int, end1: int, start2: int, end2: int) -> torch.NumberType:
-    return torch.nn.functional.mse_loss(tensor[start1:end1], tensor[start2:end2]).item()
-
-def find_min_mse_loss(tensor: torch.Tensor, indices: list[int], pre: int, post: int, max_offset: int) -> list[tuple[int, torch.NumberType]]:
-    """
-    Return is a list of length len(indices)-1 where each element is a 2-tuple of (offset where min_mse is, value of min_mse)
-    """
-    # compute the mse_loss on all row pairs in parallel
-    mse_losses = torch.zeros((len(indices)-1, max_offset+1))
-    
-
+def min_mse(tensor: torch.Tensor, max_offset: int):
+    latest_event_timeline = tensor[0, max_offset:-max_offset]
+    mse_losses = torch.stack([
+        ((latest_event_timeline - tensor[1:, offset:offset - max_offset * 2]) ** 2).mean(dim=1)
+        for offset in range(0, 2 * max_offset)
+    ], dim=1)
+    return mse_losses.min(dim=1)
 
 def torch_save(filepath: str, tensor: torch.Tensor):
     torch.save(tensor, filepath)
-    print(f"Saved tensor to {filepath}")
+    logger.info(f"Saved tensor to {filepath}")
 
 def torch_load(filepath: str) -> torch.Tensor:
-    print(f"Loaded tensor from {filepath}")
+    logger.info(f"Loading tensor from {filepath}")
     return torch.load(filepath)
