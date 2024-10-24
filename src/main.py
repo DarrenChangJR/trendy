@@ -1,12 +1,10 @@
 from datetime import date
-import logging
 
 from symbol_event import SymbolEvent
 from logging_config import setup_logging
 
 def main():
     setup_logging()
-    logger = logging.getLogger()
 
     summer_olympics_dates = [
         date(2024, 7, 26),
@@ -16,7 +14,7 @@ def main():
         date(2008, 8, 8),
         date(2004, 8, 13),
     ]
-    aapl = SymbolEvent("AAPL", summer_olympics_dates, 4 * 12, 10 * 3, 10)
+    aapl = SymbolEvent("AAPL", summer_olympics_dates, 4 * 12, 10 * 3, 10, "SPY")
     aapl.min_mse()
 
 # if __name__ == "main":

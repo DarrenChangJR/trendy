@@ -19,6 +19,7 @@ def raw_df(csv_filepath: str) -> pd.DataFrame:
 
 def raw_tensor(df: pd.DataFrame, event_dates: list[date], pre_event: int, post_event: int, max_offset: int) -> torch.Tensor:
     raw_tensor = torch.empty(len(event_dates), pre_event + post_event + 2 * max_offset + 1)
+    logger.info(f"Creating tensor of shape {raw_tensor.shape}")
     for i, event_date in enumerate(event_dates):
         event_timestamp = pd.Timestamp(event_date)
         index = df.index.get_loc(event_timestamp)
@@ -26,10 +27,10 @@ def raw_tensor(df: pd.DataFrame, event_dates: list[date], pre_event: int, post_e
         raw_tensor[i] = torch.tensor(df.iloc[index - pre_event - max_offset:index + post_event + max_offset + 1]["close"].values)
     
     if torch.cuda.is_available():
-        logger.info("CUDA is available, using GPU")
+        logger.info("CUDA is available, transferring tensor to GPU")
         raw_tensor = raw_tensor.cuda()
     else:
-        logger.info("CUDA is not available, using CPU")
+        logger.info("CUDA is not available, retaining tensor in CPU")
     return raw_tensor
 
 def delta_tensor(raw_tensor: torch.Tensor) -> torch.Tensor:
