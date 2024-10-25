@@ -14,8 +14,12 @@ def main():
         date(2008, 8, 8),
         date(2004, 8, 13),
     ]
-    aapl = SymbolEvent("AAPL", summer_olympics_dates, 4 * 12, 10 * 3, 10, "SPY")
-    aapl.min_mse()
+    pre_event = 4 * 12
+    post_event = 10 * 3
+    max_offset = 10
+
+    aapl = SymbolEvent("AAPL", summer_olympics_dates, pre_event, post_event, max_offset, "SPY")
+    
 
 # if __name__ == "main":
 main()

@@ -36,9 +36,6 @@ def raw_tensor(df: pd.DataFrame, event_dates: list[date], pre_event: int, post_e
 def delta_tensor(raw_tensor: torch.Tensor) -> torch.Tensor:
     return torch.div(raw_tensor.diff(), raw_tensor[:, :-1])
 
-def normalise_against(raw_tensor: torch.Tensor, benchmark_tensor: torch.Tensor) -> torch.Tensor:
-    return torch.div(raw_tensor, benchmark_tensor)
-
 def min_mse(tensor: torch.Tensor, max_offset: int):
     latest_event_timeline = tensor[0, max_offset:-max_offset]
     mse_losses = torch.stack([
