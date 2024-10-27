@@ -6,6 +6,7 @@ import data_analysis
 
 
 class SymbolEvent:
+    _benchmark_cache = {}
 
     def __init__(self, symbol: str, event_dates: list[date], pre_event: int, post_event: int, max_offset: int, benchmark_symbol: str | None = None) -> None:
         """
@@ -29,30 +30,55 @@ class SymbolEvent:
         self.pre_event = pre_event
         self.post_event = post_event
         self.max_offset = max_offset
-        self.start = min(event_dates) - timedelta(days=(pre_event + max_offset) * 1.6)
-        self.end = max(event_dates) + timedelta(days=(post_event + max_offset) * 1.6)
+        self.benchmark_symbol = benchmark_symbol
+        self.start = self.event_dates[-1] - timedelta(days=(pre_event + max_offset) * 1.6)
+        self.end = self.event_dates[0] + timedelta(days=(post_event + max_offset) * 1.6)
 
         assert self.end <= date.today(), "end date must be in the past, note that buffers are added to the start and end dates"
 
-        self._fetch_data()
-        self._generate_initial_tensors()
+        self._generate_df()
+        self._correlate()
+        # self.min_mse = data_analysis.min_mse(self.df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
+        # self._generate_raw_tensors()
 
-        if benchmark_symbol:
-            self._initialise_benchmark(benchmark_symbol)
-            self.benchmarked_delta_tensor = self.delta_tensor - self.benchmark_se.delta_tensor
+        # if not benchmark_symbol:
+        #     return
+        
+        # self._benchmark(benchmark_symbol)
+        # self._detect_correration()
 
-    def _initialise_benchmark(self, benchmark_symbol: str):
-        self.benchmark_se = SymbolEvent(benchmark_symbol, self.event_dates, self.pre_event, self.post_event, self.max_offset, None)
-
-    def _fetch_data(self):
+    def _generate_df(self) -> None:
         self.csv_filepath, csv_exists = utils.data_filepath(self.symbol, self.start, self.end, "csv")
         if not csv_exists:
             data_fetch.time_series_to_csv(self.symbol, self.start, self.end)
         
-    def _generate_initial_tensors(self):
-        self.raw_df = data_analysis.raw_df(self.csv_filepath)
-        self.raw_tensor = data_analysis.raw_tensor(self.raw_df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
-        self.delta_tensor = data_analysis.delta_tensor(self.raw_tensor)
+        benchmark_csv_filepath, benchmark_csv_exists = utils.data_filepath(self.benchmark_symbol, self.start, self.end, "csv")
+        if not benchmark_csv_exists:
+            data_fetch.time_series_to_csv(self.benchmark_symbol, self.start, self.end)
+        
+        self.df = data_analysis.df(self.csv_filepath, benchmark_csv_filepath)
 
-    def min_mse(self):
-        return data_analysis.min_mse(self.delta_tensor, self.max_offset)
+    # def _generate_raw_tensors(self) -> None:
+    #     self.raw_tensor = data_analysis.raw_tensor(self.raw_df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
+    #     self.delta_tensor = data_analysis.delta_tensor(self.raw_tensor)
+
+    # def _benchmark(self, benchmark_symbol: str) -> None:
+    #     if benchmark_symbol not in SymbolEvent._benchmark_cache:
+    #         SymbolEvent._benchmark_cache[benchmark_symbol] = SymbolEvent(benchmark_symbol, self.event_dates, self.pre_event, self.post_event, self.max_offset, None)
+    #     self.benchmark_se = SymbolEvent._benchmark_cache[benchmark_symbol]
+    #     self.alpha_tensor = self.delta_tensor - self.benchmark_se.delta_tensor
+
+    def _correlate(self) -> None:
+        self.alpha_loss = data_analysis.min_mse(self.df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
+        
+        random_dates = [self.event_dates[0]] + list(utils.random_dates(self.start, self.end, 100))
+        self.avg_random_loss = data_analysis.min_mse(self.df, random_dates, self.pre_event, self.post_event, self.max_offset)["mse"].mean()
+
+
+    # def min_mse(self):
+    #     return data_analysis.min_mse(self.alpha_tensor, self.max_offset)
+
+    # def plot_tensors(self):
+    #     data_visualisation.plot_raw_tensor(self.raw_tensor, self.event_dates)
+    #     data_visualisation.plot_delta_tensor(self.delta_tensor, self.event_dates)
+    #     data_visualisation.plot_alpha_tensor(self.alpha_tensor, self.event_dates)

@@ -16,9 +16,10 @@ def main():
     ]
     pre_event = 4 * 12
     post_event = 10 * 3
-    max_offset = 10
+    max_offset = 2
 
-    aapl = SymbolEvent("AAPL", summer_olympics_dates, pre_event, post_event, max_offset, "SPY")
+    aapl = SymbolEvent("AAPL", summer_olympics_dates, pre_event, post_event, max_offset, "SPLG")
+    # aapl.plot_tensors()
     
 
 # if __name__ == "main":

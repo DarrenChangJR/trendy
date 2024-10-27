@@ -11,14 +11,18 @@ def setup_logging():
     console_handler.setLevel(logging.INFO)
 
     # Create a file handler with DEBUG level
-    file_handler = logging.FileHandler(f"log/{datetime.now()}.log")
+    file_handler = logging.FileHandler(f"log/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
     file_handler.setLevel(logging.DEBUG)
 
     # Create a formatter and set it for both handlers
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
     file_handler.setFormatter(formatter)
 
     # Add handlers to the logger
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
+
+    # Disable logging from the requests module
+    logging.getLogger("requests").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
