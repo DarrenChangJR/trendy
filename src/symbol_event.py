@@ -40,8 +40,8 @@ class SymbolEvent:
 
         self.df = data_analysis.add_alpha(self.df, self.benchmark_df)
         self.min_mse = data_analysis.min_mse(self.df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
-        random_dates = utils.random_dates(self.df.iloc[0].name.date())
-        # self._correlate()
+        random_dates = self.event_dates[0:1] + utils.random_dates(self.df.iloc[0].name.date(), date.today() - timedelta(days=(self.post_event + self.max_offset) * 2), 500)
+        self.avg_random_loss = data_analysis.min_mse(self.df, random_dates, self.pre_event, self.post_event, self.max_offset)["mse"].mean()
 
     # def _generate_df(self) -> None:
     #     pass
