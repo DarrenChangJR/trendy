@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from logging import getLogger
 
 import utils
 import data_fetch
@@ -7,6 +8,7 @@ import data_analysis
 
 class SymbolEvent:
     _benchmark_cache = {}
+    logger = getLogger()
 
     def __init__(self, symbol: str, event_dates: list[date], pre_event: int, post_event: int, max_offset: int, benchmark_symbol: str | None = None) -> None:
         """
@@ -32,32 +34,27 @@ class SymbolEvent:
         self.max_offset = max_offset
         self.benchmark_symbol = benchmark_symbol
 
-        self.df = data_fetch.generate_df(self.symbol, self.event_dates, self.post_event, self.max_offset)
-        
+        # setting & calculating data specific to the 2 datasets
         if self.benchmark_symbol not in SymbolEvent._benchmark_cache:
             SymbolEvent._benchmark_cache[self.benchmark_symbol] = data_fetch.generate_df(self.benchmark_symbol, self.event_dates, self.post_event, self.max_offset)
         self.benchmark_df = SymbolEvent._benchmark_cache[self.benchmark_symbol]
+        self.df = data_fetch.generate_df(self.symbol, self.event_dates, self.post_event, self.max_offset)
+        self.df = data_analysis.alpha(self.df, self.benchmark_df)
+        self._earliest_alpha = max(self.df.iloc[0].name.date(), self.benchmark_df.iloc[0].name.date())
+        self._latest_alpha = min(self.df.iloc[-1].name.date(), self.benchmark_df.iloc[-1].name.date())
 
-        self.df = data_analysis.add_alpha(self.df, self.benchmark_df)
-        self.min_mse = data_analysis.min_mse(self.df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
-        random_dates = self.event_dates[0:1] + utils.random_dates(self.df.iloc[0].name.date(), date.today() - timedelta(days=(self.post_event + self.max_offset) * 2), 500)
-        self.avg_random_loss = data_analysis.min_mse(self.df, random_dates, self.pre_event, self.post_event, self.max_offset)["mse"].mean()
-
-    # def _generate_df(self) -> None:
-    #     pass
-        # self.csv_filepath, csv_exists = utils.data_filepath(self.symbol, self.start, self.end, "csv")
-        # if not csv_exists:
-        #     data_fetch.time_series_to_csv(self.symbol, self.start, self.end)
+        # calculating MSE of principal and random mean squared error losses
+        random_dates = list(utils.random_dates(
+            self._earliest_alpha + timedelta(days=(self.pre_event + self.max_offset) * 2),
+            self._latest_alpha - timedelta(days=(self.post_event + self.max_offset) * 2),
+            500
+        ))
+        self.avg_random_mse = data_analysis.min_mse(self.df, self.event_dates[0], random_dates, self.pre_event, self.post_event, self.max_offset)["mse"].mean()
+        self.min_mse = data_analysis.min_mse(self.df, self.event_dates[0], self.event_dates[1:], self.pre_event, self.post_event, self.max_offset)
         
-        # benchmark_csv_filepath, benchmark_csv_exists = utils.data_filepath(self.benchmark_symbol, self.start, self.end, "csv")
-        # if not benchmark_csv_exists:
-        #     data_fetch.time_series_to_csv(self.benchmark_symbol, self.start, self.end)
-        
-        # self.df = data_analysis.df(self.csv_filepath, benchmark_csv_filepath)
-
-    def _correlate(self) -> None:
-        pass
-        # self.alpha_loss = data_analysis.min_mse(self.df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
-        
-        # random_dates = [self.event_dates[0]] + list(utils.random_dates(self.start, self.end, 100))
-        # self.avg_random_loss = data_analysis.min_mse(self.df, random_dates, self.pre_event, self.post_event, self.max_offset)["mse"].mean()
+        # assess if this instance of SymbolEvent has correlation
+        # self.correlation = (
+        print(f"Average MSE: {self.avg_random_mse}")
+        print(self.min_mse)
+        print((self.min_mse["mse"] < self.avg_random_mse).all())
+        # )

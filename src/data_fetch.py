@@ -19,12 +19,12 @@ def generate_df(symbol: str, event_dates: list[date], post_event: int, max_offse
         if _df_sufficient(df, event_dates, post_event, max_offset):
             return df
         logger.info("Local data is not sufficient, fetching more data")
-        new_df = _fetch_from(df.iloc[-1].name.date() + timedelta(days=1))
+        new_df = _time_series_df(df.iloc[-1].name.date() + timedelta(days=1))
         df = df.append(new_df)
     else:
         logger.info(f"Fetching: {symbol}")
         earlist_date = twelvedata.earliest_timestamp(symbol)
-        df = _fetch_from(twelvedata, symbol, earlist_date)
+        df = _time_series_df(twelvedata, symbol, earlist_date)
     
     assert _df_sufficient(df, event_dates, post_event, max_offset), "The latest event timeline is not complete yet! Consider reducing max_offset and/or post_event."
     
@@ -34,7 +34,7 @@ def generate_df(symbol: str, event_dates: list[date], post_event: int, max_offse
     df.to_csv(csv_path)
     return df
 
-def _fetch_from(twelvedata: TwelveData, symbol: str, start_date: date) -> pd.DataFrame:
+def _time_series_df(twelvedata: TwelveData, symbol: str, start_date: date) -> pd.DataFrame:
     data = "date;open;high;low;close;volume\n"
     end_date = start_date
     while end_date < date.today():
@@ -52,5 +52,5 @@ def _fetch_from(twelvedata: TwelveData, symbol: str, start_date: date) -> pd.Dat
     )
 
 def _df_sufficient(df: pd.DataFrame, event_dates: list[date], post_event: int, max_offset: int) -> bool:
-    latest_event_index = df.index.get_loc(pd.Timestamp(event_dates[0]))
+    latest_event_index = df.index.get_indexer([pd.Timestamp(event_dates[0])], "nearest")[0]
     return (latest_event_index + post_event + max_offset) < len(df)

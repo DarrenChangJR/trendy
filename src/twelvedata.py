@@ -36,3 +36,6 @@ class TwelveData:
         }
         params.update(kwargs)
         return self._request("/time_series", params)
+
+    def stocks(self) -> str:
+        return self._request("/stocks", {"format": "CSV"})
