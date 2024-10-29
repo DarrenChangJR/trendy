@@ -31,54 +31,33 @@ class SymbolEvent:
         self.post_event = post_event
         self.max_offset = max_offset
         self.benchmark_symbol = benchmark_symbol
-        self.start = self.event_dates[-1] - timedelta(days=(pre_event + max_offset) * 1.6)
-        self.end = self.event_dates[0] + timedelta(days=(post_event + max_offset) * 1.6)
 
-        assert self.end <= date.today(), "end date must be in the past, note that buffers are added to the start and end dates"
-
-        self._generate_df()
-        self._correlate()
-        # self.min_mse = data_analysis.min_mse(self.df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
-        # self._generate_raw_tensors()
-
-        # if not benchmark_symbol:
-        #     return
+        self.df = data_fetch.generate_df(self.symbol, self.event_dates, self.post_event, self.max_offset)
         
-        # self._benchmark(benchmark_symbol)
-        # self._detect_correration()
+        if self.benchmark_symbol not in SymbolEvent._benchmark_cache:
+            SymbolEvent._benchmark_cache[self.benchmark_symbol] = data_fetch.generate_df(self.benchmark_symbol, self.event_dates, self.post_event, self.max_offset)
+        self.benchmark_df = SymbolEvent._benchmark_cache[self.benchmark_symbol]
 
-    def _generate_df(self) -> None:
-        self.csv_filepath, csv_exists = utils.data_filepath(self.symbol, self.start, self.end, "csv")
-        if not csv_exists:
-            data_fetch.time_series_to_csv(self.symbol, self.start, self.end)
+        self.df = data_analysis.add_alpha(self.df, self.benchmark_df)
+        self.min_mse = data_analysis.min_mse(self.df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
+        random_dates = utils.random_dates(self.df.iloc[0].name.date())
+        # self._correlate()
+
+    # def _generate_df(self) -> None:
+    #     pass
+        # self.csv_filepath, csv_exists = utils.data_filepath(self.symbol, self.start, self.end, "csv")
+        # if not csv_exists:
+        #     data_fetch.time_series_to_csv(self.symbol, self.start, self.end)
         
-        benchmark_csv_filepath, benchmark_csv_exists = utils.data_filepath(self.benchmark_symbol, self.start, self.end, "csv")
-        if not benchmark_csv_exists:
-            data_fetch.time_series_to_csv(self.benchmark_symbol, self.start, self.end)
+        # benchmark_csv_filepath, benchmark_csv_exists = utils.data_filepath(self.benchmark_symbol, self.start, self.end, "csv")
+        # if not benchmark_csv_exists:
+        #     data_fetch.time_series_to_csv(self.benchmark_symbol, self.start, self.end)
         
-        self.df = data_analysis.df(self.csv_filepath, benchmark_csv_filepath)
-
-    # def _generate_raw_tensors(self) -> None:
-    #     self.raw_tensor = data_analysis.raw_tensor(self.raw_df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
-    #     self.delta_tensor = data_analysis.delta_tensor(self.raw_tensor)
-
-    # def _benchmark(self, benchmark_symbol: str) -> None:
-    #     if benchmark_symbol not in SymbolEvent._benchmark_cache:
-    #         SymbolEvent._benchmark_cache[benchmark_symbol] = SymbolEvent(benchmark_symbol, self.event_dates, self.pre_event, self.post_event, self.max_offset, None)
-    #     self.benchmark_se = SymbolEvent._benchmark_cache[benchmark_symbol]
-    #     self.alpha_tensor = self.delta_tensor - self.benchmark_se.delta_tensor
+        # self.df = data_analysis.df(self.csv_filepath, benchmark_csv_filepath)
 
     def _correlate(self) -> None:
-        self.alpha_loss = data_analysis.min_mse(self.df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
+        pass
+        # self.alpha_loss = data_analysis.min_mse(self.df, self.event_dates, self.pre_event, self.post_event, self.max_offset)
         
-        random_dates = [self.event_dates[0]] + list(utils.random_dates(self.start, self.end, 100))
-        self.avg_random_loss = data_analysis.min_mse(self.df, random_dates, self.pre_event, self.post_event, self.max_offset)["mse"].mean()
-
-
-    # def min_mse(self):
-    #     return data_analysis.min_mse(self.alpha_tensor, self.max_offset)
-
-    # def plot_tensors(self):
-    #     data_visualisation.plot_raw_tensor(self.raw_tensor, self.event_dates)
-    #     data_visualisation.plot_delta_tensor(self.delta_tensor, self.event_dates)
-    #     data_visualisation.plot_alpha_tensor(self.alpha_tensor, self.event_dates)
+        # random_dates = [self.event_dates[0]] + list(utils.random_dates(self.start, self.end, 100))
+        # self.avg_random_loss = data_analysis.min_mse(self.df, random_dates, self.pre_event, self.post_event, self.max_offset)["mse"].mean()

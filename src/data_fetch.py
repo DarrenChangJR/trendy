@@ -29,16 +29,18 @@ def generate_df(symbol: str, event_dates: list[date], post_event: int, max_offse
     assert _df_sufficient(df, event_dates, post_event, max_offset), "The latest event timeline is not complete yet! Consider reducing max_offset and/or post_event."
     
     df.sort_index(inplace=True)
+    df["delta"] = df["close"].diff() / df.shift(1)["close"]
     logger.info(f"Writing for future use: {csv_path}")
     df.to_csv(csv_path)
     return df
 
 def _fetch_from(twelvedata: TwelveData, symbol: str, start_date: date) -> pd.DataFrame:
     data = "date;open;high;low;close;volume\n"
-    next_page = True
-    while next_page:
-        new_data = twelvedata.time_series(symbol, start_date)
-        next_page = new_data.count("\n") == 5000
+    end_date = start_date
+    while end_date < date.today():
+        start_date = end_date
+        end_date += timedelta(weeks=988)
+        new_data = twelvedata.time_series(symbol, start_date, end_date)
         data += new_data[new_data.index("\n") + 1:]
     
     return pd.read_csv(
