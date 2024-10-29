@@ -18,7 +18,7 @@ def main():
     post_event = 10 * 3
     max_offset = 2
 
-    aapl = SymbolEvent("AAPL", summer_olympics_dates, pre_event, post_event, max_offset, "SPLG")
+    aapl = SymbolEvent("AAPL", summer_olympics_dates, pre_event, post_event, max_offset, "SPY")
     # aapl.plot_tensors()
     
 
