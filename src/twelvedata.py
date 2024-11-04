@@ -37,5 +37,16 @@ class TwelveData:
         params.update(kwargs)
         return self._request("/time_series", params)
 
+    def beta(self, symbol: str, start_date: date, end_date: date, **kwargs) -> str:
+        params = {
+            "symbol": symbol,
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+            "interval": "1day",
+            "format": "CSV"
+        }
+        params.update(kwargs)
+        return self._request("/beta", params)
+
     def stocks(self) -> str:
         return self._request("/stocks", {"format": "CSV"})
