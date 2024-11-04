@@ -4,6 +4,7 @@ from logging import getLogger
 import utils
 import data_fetch
 import data_analysis
+import data_visualisation
 
 
 class SymbolEvent:
@@ -36,25 +37,23 @@ class SymbolEvent:
 
         # setting & calculating data specific to the 2 datasets
         if self.benchmark_symbol not in SymbolEvent._benchmark_cache:
-            SymbolEvent._benchmark_cache[self.benchmark_symbol] = data_fetch.generate_df(self.benchmark_symbol, self.event_dates, self.post_event, self.max_offset)
+            SymbolEvent._benchmark_cache[self.benchmark_symbol] = data_fetch.generate_df(self.benchmark_symbol, self.event_dates, self.post_event)
         self.benchmark_df = SymbolEvent._benchmark_cache[self.benchmark_symbol]
-        self.df = data_fetch.generate_df(self.symbol, self.event_dates, self.post_event, self.max_offset)
+        self.df = data_fetch.generate_df(self.symbol, self.event_dates, self.post_event)
         self.df = data_analysis.alpha(self.df, self.benchmark_df)
         self._earliest_alpha = max(self.df.iloc[0].name.date(), self.benchmark_df.iloc[0].name.date())
         self._latest_alpha = min(self.df.iloc[-1].name.date(), self.benchmark_df.iloc[-1].name.date())
 
         # calculating MSE of principal and random mean squared error losses
+        # confidence range: (-infinity, 1]
         random_dates = list(utils.random_dates(
             self._earliest_alpha + timedelta(days=(self.pre_event + self.max_offset) * 2),
             self._latest_alpha - timedelta(days=(self.post_event + self.max_offset) * 2),
             500
         ))
-        self.avg_random_mse = data_analysis.min_mse(self.df, self.event_dates[0], random_dates, self.pre_event, self.post_event, self.max_offset)["mse"].mean()
+        self.min_mse_random = data_analysis.min_mse(self.df, self.event_dates[0], random_dates, self.pre_event, self.post_event, self.max_offset)
+        self.min_mse_random_mean = self.min_mse_random["mse"].mean()
         self.min_mse = data_analysis.min_mse(self.df, self.event_dates[0], self.event_dates[1:], self.pre_event, self.post_event, self.max_offset)
+        self.min_mse["confidence"] = (self.min_mse_random_mean - self.min_mse["mse"]) / self.min_mse_random_mean
         
-        # assess if this instance of SymbolEvent has correlation
-        # self.correlation = (
-        print(f"Average MSE: {self.avg_random_mse}")
-        print(self.min_mse)
-        print((self.min_mse["mse"] < self.avg_random_mse).all())
-        # )
+        data_visualisation.main_plot(self.df)

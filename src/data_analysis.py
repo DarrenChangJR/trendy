@@ -6,8 +6,8 @@ logger = getLogger()
 
 def alpha(df: pd.DataFrame, benchmark_df: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"Calculating alpha, symbol has {len(df)} rows, benchmark has {len(benchmark_df)} rows")
-    assert "close" in df.columns, "\"close\" column not found in dataframe"
-    assert "close" in benchmark_df.columns, "\"close\" column not found in benchmark's dataframe"
+    assert "delta" in df.columns, "\"delta\" column not found in dataframe"
+    assert "delta" in benchmark_df.columns, "\"delta\" column not found in benchmark's dataframe"
 
     df = df.join(benchmark_df, how="left", rsuffix="_benchmark")
     df["alpha"] = df["delta"] - df["delta_benchmark"]
@@ -28,12 +28,16 @@ def min_mse(df: pd.DataFrame, principal_event_date: date, dates: list[date], pre
         start = event_index - pre_event
         end = event_index + post_event + 1
         for offset in range(-max_offset, max_offset + 1):
-            assert start + offset >= 0, f"start + offset = {start + offset} < 0, caused by date {event_date}"
             assert end + offset <= len(df), f"end + offset = {end + offset} > {len(df)}, caused by date {event_date}"
+            # start of sliding window is not in range, i.e. symbol has not traded yet
+            if start + offset < 0:
+                min_mse.loc[event_date] = pd.NA, offset
+                continue
+            # calculate mse and retain minimum, or if equal, then retain offset closest to 0
             mse = ((latest_event_timeline_alpha - df.iloc[start + offset:end + offset]["alpha"].to_numpy()) ** 2).mean()
             if pd.isna(min_mse.loc[event_date, "mse"]) | (mse < min_mse.loc[event_date, "mse"]):
                 min_mse.loc[event_date] = mse, offset
             elif mse == min_mse.loc[event_date, "mse"]:
-                min_mse.loc[event_date] = mse, min(min_mse.loc[event_date, "offset"], offset)
+                min_mse.loc[event_date, "offset"] = min(abs(min_mse.loc[event_date, "offset"]), abs(offset))
     
     return min_mse

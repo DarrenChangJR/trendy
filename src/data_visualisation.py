@@ -1,50 +1,30 @@
-import plotly.express as px
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import matplotlib.axes
+import pandas as pd
 
-def plot_raw_tensor(raw_tensor, event_dates):
-    fig = go.Figure()
-    for i, event_date in enumerate(event_dates):
-        fig.add_trace(go.Scatter(
-            x=list(range(len(raw_tensor[i]))),
-            y=raw_tensor[i],
-            mode='lines',
-            name=f'Event {event_date}'
-        ))
-    fig.update_layout(
-        title='Raw Tensor Plot',
-        xaxis_title='Time',
-        yaxis_title='Value'
-    )
-    fig.show()
+def _plot_closing(ax_close: matplotlib.axes.Axes, df: pd.DataFrame) -> None:
+    ax_close.plot(df["close"], label="closing of symbol", color="blue")
+    ax_close.set_xlabel("Date")
+    ax_close.set_ylabel("Price of Symbol")
+    ax_close.set_title("Closing Price of Symbol and Index")
+    ax_close_benchmark = ax_close.twinx()
+    ax_close_benchmark.plot(df["close_benchmark"], label="closing of index", color="orange")
+    ax_close_benchmark.set_ylabel("Price of Index")
+    lines, labels = ax_close.get_legend_handles_labels()
+    lines2, labels2 = ax_close_benchmark.get_legend_handles_labels()
+    ax_close_benchmark.legend(lines + lines2, labels + labels2, loc=0)
 
-def plot_delta_tensor(delta_tensor, event_dates):
-    fig = go.Figure()
-    for i, event_date in enumerate(event_dates):
-        fig.add_trace(go.Scatter(
-            x=list(range(len(delta_tensor[i]))),
-            y=delta_tensor[i],
-            mode='lines',
-            name=f'Event {event_date}'
-        ))
-    fig.update_layout(
-        title='Delta Tensor Plot',
-        xaxis_title='Time',
-        yaxis_title='Value'
-    )
-    fig.show()
+def _plot_delta(ax_delta: matplotlib.axes.Axes, df: pd.DataFrame) -> None:
+    ax_delta.plot(df["delta"], label="delta of symbol", color="blue")
+    ax_delta.set_xlabel("Date")
+    ax_delta.set_ylabel("Delta")
+    ax_delta.set_title("Delta of Symbol and Index")
+    ax_delta.plot(df["delta_benchmark"], label="delta of index", color="orange")
 
-def plot_alpha_tensor(alpha_tensor, event_dates):
-    fig = go.Figure()
-    for i, event_date in enumerate(event_dates):
-        fig.add_trace(go.Scatter(
-            x=list(range(len(alpha_tensor[i]))),
-            y=alpha_tensor[i],
-            mode='lines',
-            name=f'Event {event_date}'
-        ))
-    fig.update_layout(
-        title='Alpha Tensor Plot',
-        xaxis_title='Time',
-        yaxis_title='Value'
-    )
-    fig.show()
+# def
+
+def main_plot(df: pd.DataFrame) -> None:
+    fig, (ax_close, ax_delta, _) = plt.subplots(3, 1)
+    _plot_closing(ax_close, df)
+    _plot_delta(ax_delta, df)
+    plt.show()

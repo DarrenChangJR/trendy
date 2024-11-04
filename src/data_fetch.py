@@ -9,14 +9,15 @@ from keys import TWELVE_DATA_KEY
 
 logger = getLogger()
 
-def generate_df(symbol: str, event_dates: list[date], post_event: int, max_offset: int) -> pd.DataFrame:
+def generate_df(symbol: str, event_dates: list[date], post_event: int) -> pd.DataFrame:
     twelvedata = TwelveData(TWELVE_DATA_KEY)
     
     csv_path, csv_exists = utils.file_path(f"data/{symbol}.csv")
     if csv_exists:
         logger.info(f"Exists local data, reading from {csv_path}")
         df = pd.read_csv(csv_path, parse_dates=["date"], index_col="date")
-        if _df_sufficient(df, event_dates, post_event, max_offset):
+        if _df_sufficient(df, event_dates, post_event):
+            logger.info("Local data is sufficient")
             return df
         logger.info("Local data is not sufficient, fetching more data")
         new_df = _time_series_df(df.iloc[-1].name.date() + timedelta(days=1))
@@ -26,7 +27,7 @@ def generate_df(symbol: str, event_dates: list[date], post_event: int, max_offse
         earlist_date = twelvedata.earliest_timestamp(symbol)
         df = _time_series_df(twelvedata, symbol, earlist_date)
     
-    assert _df_sufficient(df, event_dates, post_event, max_offset), "The latest event timeline is not complete yet! Consider reducing max_offset and/or post_event."
+    assert _df_sufficient(df, event_dates, post_event), "The latest event timeline has not completed yet! Consider reducing post_event."
     
     df.sort_index(inplace=True)
     df["delta"] = df["close"].diff() / df.shift(1)["close"]
@@ -35,22 +36,27 @@ def generate_df(symbol: str, event_dates: list[date], post_event: int, max_offse
     return df
 
 def _time_series_df(twelvedata: TwelveData, symbol: str, start_date: date) -> pd.DataFrame:
-    data = "date;open;high;low;close;volume\n"
+    close = "date;open;high;low;close;volume\n"
+    beta = "date;beta\n"
+    
     end_date = start_date
     while end_date < date.today():
         start_date = end_date
         end_date += timedelta(weeks=988)
-        new_data = twelvedata.time_series(symbol, start_date, end_date)
-        data += new_data[new_data.index("\n") + 1:]
+        new_close = twelvedata.time_series(symbol, start_date, end_date)
+        close += new_close[new_close.index("\n") + 1:]
+        new_beta = twelvedata.beta(symbol, start_date, end_date)
+        beta += new_beta[new_beta.index("\n") + 1:]
+
     
     return pd.read_csv(
-        StringIO(data),
+        StringIO(close),
         sep=";",
         usecols=["date", "close"],
         parse_dates=["date"],
         index_col="date"
     )
 
-def _df_sufficient(df: pd.DataFrame, event_dates: list[date], post_event: int, max_offset: int) -> bool:
+def _df_sufficient(df: pd.DataFrame, event_dates: list[date], post_event: int) -> bool:
     latest_event_index = df.index.get_indexer([pd.Timestamp(event_dates[0])], "nearest")[0]
-    return (latest_event_index + post_event + max_offset) < len(df)
+    return (latest_event_index + post_event) < len(df)
