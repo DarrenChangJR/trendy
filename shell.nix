@@ -7,6 +7,7 @@ mkShell {
     python3Packages.pandas
     python3Packages.plotly
     python3Packages.requests
+    python3Packages.matplotlib
   ];
 
   shellHook = ''
