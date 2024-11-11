@@ -55,5 +55,9 @@ class SymbolEvent:
         self.min_mse_random_mean = self.min_mse_random["mse"].mean()
         self.min_mse = data_analysis.min_mse(self.df, self.event_dates[0], self.event_dates[1:], self.pre_event, self.post_event, self.max_offset)
         self.min_mse["confidence"] = (self.min_mse_random_mean - self.min_mse["mse"]) / self.min_mse_random_mean
+
+        # log the results
+        # SymbolEvent.logger.info(f"Symbol: {self.symbol}")
+        # SymbolEvent.logger.info(self.min_mse)
         
-        data_visualisation.main_plot(self.df)
+        data_visualisation.main_plot(self.df, self.event_dates)
