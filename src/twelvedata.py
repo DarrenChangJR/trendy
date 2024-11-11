@@ -13,7 +13,7 @@ class TwelveData:
         self._apikey = apikey
 
     def _request(self, path: str, params: dict[str, str]) -> str:
-        logger.info(f"Params (excluding apikey): {params}")
+        logger.info(f"Path: {path}, Params: {params}")
         params.update({"apikey": self._apikey})
         response = get(f"{TwelveData._api_endpoint}{path}", params)
         if response.status_code != 200:

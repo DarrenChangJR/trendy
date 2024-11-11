@@ -20,24 +20,25 @@ def generate_df(symbol: str, event_dates: list[date], post_event: int) -> pd.Dat
             logger.info("Local data is sufficient")
             return df
         logger.info("Local data is not sufficient, fetching more data")
-        new_df = _time_series_df(df.iloc[-1].name.date() + timedelta(days=1))
+        new_df = _time_series_df(twelvedata, symbol, df.iloc[-1].name.date() + timedelta(days=1))
         df = df.append(new_df)
     else:
         logger.info(f"Fetching: {symbol}")
         earlist_date = twelvedata.earliest_timestamp(symbol)
         df = _time_series_df(twelvedata, symbol, earlist_date)
     
-    assert _df_sufficient(df, event_dates, post_event), "The latest event timeline has not completed yet! Consider reducing post_event."
-    
+    df = df[~df.index.duplicated(keep="first")]
     df.sort_index(inplace=True)
     df["delta"] = df["close"].diff() / df.shift(1)["close"]
+    
+    assert _df_sufficient(df, event_dates, post_event), "The latest event timeline has not completed yet! Consider reducing post_event."
+    
     logger.info(f"Writing for future use: {csv_path}")
     df.to_csv(csv_path)
     return df
 
 def _time_series_df(twelvedata: TwelveData, symbol: str, start_date: date) -> pd.DataFrame:
     close = "date;open;high;low;close;volume\n"
-    beta = "date;beta\n"
     
     end_date = start_date
     while end_date < date.today():
@@ -45,10 +46,7 @@ def _time_series_df(twelvedata: TwelveData, symbol: str, start_date: date) -> pd
         end_date += timedelta(weeks=988)
         new_close = twelvedata.time_series(symbol, start_date, end_date)
         close += new_close[new_close.index("\n") + 1:]
-        new_beta = twelvedata.beta(symbol, start_date, end_date)
-        beta += new_beta[new_beta.index("\n") + 1:]
 
-    
     return pd.read_csv(
         StringIO(close),
         sep=";",
