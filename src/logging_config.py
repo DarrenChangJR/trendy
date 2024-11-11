@@ -23,6 +23,8 @@ def setup_logging():
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
 
-    # Disable logging from the requests module
+    # Disable logging from the various dependencies
     logging.getLogger("requests").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)
+    logging.getLogger('PIL').setLevel(logging.WARNING)
